@@ -16,7 +16,11 @@ class IdFromAccession():
                     raise RuntimeError("ERROR: A duplicate id was found in the fasta files: % s" % id)
                 self.nameToIdDicts_in_species[iSp][accession] = id   
 
-def syntenyMatrix(seqsInfo, syntenyFilename, idFromName:IdFromAccession):
+def syntenyMatrix(seqsInfo, syntenyFilename:str, idFromName:IdFromAccession):
+    if(syntenyFilename.endswith('.anchors')):
+        format = 'anchors'
+    elif(syntenyFilename.endswith('.collinearity')):
+        format = 'collinearity'
     with open(syntenyFilename, 'r') as syntenyFile: 
         iSp = -1
         jSp = -1
@@ -25,9 +29,15 @@ def syntenyMatrix(seqsInfo, syntenyFilename, idFromName:IdFromAccession):
             if(line.startswith('#')):
                 continue
             values = line.split('\t')
-            if(len(values) != 3):
-                continue
-            iName, jName, score = values
+            if(format == 'anchors'):
+                if(len(values) != 3):
+                    continue
+                iName, jName, score = values
+            elif(format == 'collinearity'):
+                if(len(values) != 4):
+                    continue
+                values = list(map(str.strip, values))
+                _, iName, jName, score = values
             if(iSp < 0):
                 for i, dict in enumerate(idFromName.nameToIdDicts_in_species):
                     if(iName in dict):

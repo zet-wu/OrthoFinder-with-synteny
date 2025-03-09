@@ -809,17 +809,23 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion):
 Synteny
 -------------------------------------------------------------------------------
 """
-def readAllSynteny(seqsInfo, syntenyFileDict:str, idsFilename, d_pickle):
-    id_dicts = synteny.IdFromAccession(idsFilename)
+def readAllSynteny(seqsInfo, syntenyFileDict, fileHandler:files.__Files_new_dont_manually_create__, d_pickle):
+    sequence_id_dicts = synteny.IdFromAccession(fileHandler.GetSequenceIDsFN())
+    species_id_dict = [None for _ in range(seqsInfo.nSpecies)]
+    with open(fileHandler.GetSpeciesIDsFN()) as file:
+        for line in file:
+            speciesId, fastaName = line.strip().split(': ')
+            species_id_dict[int(speciesId)] = fastaName.rsplit('.', 1)[0]
     synteny_matrices = [[None for _ in range(seqsInfo.nSpecies)] for _ in range(seqsInfo.nSpecies)]
     for filename in os.listdir(syntenyFileDict):
-        if(filename.endswith('anchors')):
-            mat, (i, j) = synteny.syntenyMatrix(seqsInfo, os.path.join(syntenyFileDict, filename), id_dicts)
+        if(filename.endswith('.anchors') or filename.endswith('.collinearity')):
+            mat, (i, j) = synteny.syntenyMatrix(seqsInfo, os.path.join(syntenyFileDict, filename), sequence_id_dicts)
             synteny_matrices[i][j] = mat.copy()
             synteny_matrices[j][i] = mat.transpose()
     for i in range(seqsInfo.nSpecies):
         for j in range(seqsInfo.nSpecies):
             if(synteny_matrices[i][j] is None):
+                print(f"WARNING: Cannot find the synteny file between {species_id_dict[i]} and {species_id_dict[j]}.")
                 synteny_matrices[i][j] = sparse.csr_matrix((seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[i]], seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[j]]))
         matrices.DumpMatrixArray('SYN', synteny_matrices[i], i, d_pickle)
 
@@ -1788,7 +1794,7 @@ def main(args=None):
             if options.speciesXMLInfoFN:   
                 speciesXML = GetXMLSpeciesInfo(speciesInfoObj, options)
             if options.synteny:
-                readAllSynteny(seqsInfo, syntenyDir, files.FileHandler.GetSequenceIDsFN(), files.FileHandler.GetPickleDir())
+                readAllSynteny(seqsInfo, syntenyDir, files.FileHandler, files.FileHandler.GetPickleDir())
             # 6.    
             util.PrintUnderline("Dividing up work for BLAST for parallel processing")
             CreateSearchDatabases(speciesInfoObj, options, prog_caller)
@@ -1811,7 +1817,7 @@ def main(args=None):
             if options.speciesXMLInfoFN:   
                 speciesXML = GetXMLSpeciesInfo(speciesInfoObj, options)
             if options.synteny:
-                readAllSynteny(seqsInfo, syntenyDir, files.FileHandler.GetSequenceIDsFN(), files.FileHandler.GetPickleDir())
+                readAllSynteny(seqsInfo, syntenyDir, files.FileHandler, files.FileHandler.GetPickleDir())
             # 6.    
             util.PrintUnderline("Dividing up work for BLAST for parallel processing")
             CreateSearchDatabases(speciesInfoObj, options, prog_caller)
@@ -1834,7 +1840,7 @@ def main(args=None):
             if options.speciesXMLInfoFN:   
                 speciesXML = GetXMLSpeciesInfo(speciesInfoObj, options)
             if options.synteny:
-                readAllSynteny(seqsInfo, syntenyDir, files.FileHandler.GetSequenceIDsFN(), files.FileHandler.GetPickleDir())
+                readAllSynteny(seqsInfo, syntenyDir, files.FileHandler, files.FileHandler.GetPickleDir())
             # 8        
             DoOrthogroups(options, speciesInfoObj, seqsInfo)    
             # 9
